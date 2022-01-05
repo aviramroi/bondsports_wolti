@@ -7,8 +7,11 @@ from flask import Flask
 from flask import request
 from slack import WebClient
 
+from pymongo import MongoClient
+
 CHECK_INTERVAL = 5.0
 
+MONGO_CON = os.getenv('MONGO_CON')
 SLACK_TOKEN = os.getenv('SLACK_TOKEN')
 
 if SLACK_TOKEN is None:
@@ -25,6 +28,10 @@ SCHEDULED_CHECKS = {}
 app = Flask(__name__)
 
 
+client = MongoClient(MONGO_CON)
+mydb  = client["wolti"]
+myCollection = mydb["scheduled"]
+
 def send_message(user_id, text):
     SLACK_CLIENT.chat_postMessage(
         channel=user_id,
@@ -33,58 +40,58 @@ def send_message(user_id, text):
     )
 
 
-def check():
-    if SCHEDULED_CHECKS:
-        print(f'Processing {str(len(SCHEDULED_CHECKS))} jobs...', flush=True)
 
-        users_to_delete = []
+def new_check(arr):
+    print(f'Processing {str(len(SCHEDULED_CHECKS))} jobs...', flush=True)
 
-        for user_id in SCHEDULED_CHECKS:
+    users_to_delete = []
+
+    for order in arr:
+        user_id = order["user_id"]
+
+        try:
+            response = requests.get(URL_REST_INFO % order["slug"])
+
+            response.raise_for_status()
+
+            result = response.json()['results'][0]
+
+            # Prefer Hebrew name
             try:
-                response = requests.get(URL_REST_INFO % SCHEDULED_CHECKS[user_id])
+                rest_name = list(filter(lambda x: x["lang"] == "he", result["name"]))[
+                    0]["value"]
+            except:
+                rest_name = list(filter(lambda x: x["lang"] == "en", result["name"]))[
+                    0]["value"]
 
-                response.raise_for_status()
+            is_online = result['online']
 
-                result = response.json()['results'][0]
-
-                # Prefer Hebrew name
-                try:
-                    rest_name = list(filter(lambda x: x["lang"] == "he", result["name"]))[
-                        0]["value"]
-                except:
-                    rest_name = list(filter(lambda x: x["lang"] == "en", result["name"]))[
-                        0]["value"]
-
-                is_online = result['online']
-
-                if is_online:
-                    order_url = result['public_url']
-
-                    send_message(
-                        user_id,
-                        f'Yay! :sunglasses: *{rest_name}* is available for orders <{order_url}|here>.'
-                    )
-
-                    users_to_delete.append(user_id)
-            except Exception as e:
-                print(f'Unable to process job (User ID: {user_id}, Slug: {SCHEDULED_CHECKS[user_id]}: {str(e)}',
-                      flush=True)
+            if is_online:
+                order_url = result['public_url']
 
                 send_message(
                     user_id,
-                    'Woops, something went wrong on our side! :scream_cat: Please reschedule your notification.'
+                    f'Yay! :sunglasses: *{rest_name}* is available for orders <{order_url}|here>.'
                 )
 
                 users_to_delete.append(user_id)
+        except Exception as e:
+            print(f'Unable to process job (User ID: {user_id}, Slug: {order["slug"]}: {str(e)}',
+                  flush=True)
 
-        for user_id in users_to_delete:
-            del SCHEDULED_CHECKS[user_id]
+            send_message(
+                user_id,
+                'Woops, something went wrong on our side! :scream_cat: Please reschedule your notification.'
+            )
 
-        print(f'Done ({str(len(users_to_delete))})', flush=True)
+            users_to_delete.append(user_id)
 
-    t = threading.Timer(CHECK_INTERVAL, check)
-    t.daemon = True
-    t.start()
+    for user_id in users_to_delete:
+        del SCHEDULED_CHECKS[user_id]
+
+    print(f'Done ({str(len(users_to_delete))})', flush=True)
+
+
 
 
 def find_restaurant(query):
@@ -113,19 +120,21 @@ def find_restaurant(query):
 
 
 
+
 @app.route('/scheduled',methods=['GET'])
 def getter_test():
-    return SCHEDULED_CHECKS
+    scheduled = myCollection.find()
+    newArray = []
+    for i in newArray:
+        scheduled.append(i)
+    return scheduled
 
-@app.route('/testing', methods=['POST'])
+
+@app.route('/check-schedule', methods=['POST'])
 def what():
-    user_id = request.form['user_id']
-    command = request.form['command']
-    text = request.form['text']
-    channel_id = request.form['channel_id']
-    response = requests.get(URL_SEARCH % text)
+    checks = myCollection.find({"status":True})
+    new_check(checks)
 
-    response.raise_for_status()
     return request
 
 @app.route('/', methods=['POST'])
@@ -137,6 +146,7 @@ def regular_callback():
 
     if command == '/wolt':
         if text == 'cancel':
+            myCollection.delete_many({"user_id":user_id})
             if user_id in SCHEDULED_CHECKS:
                 del SCHEDULED_CHECKS[user_id]
 
@@ -196,12 +206,11 @@ def interactive_callback():
     slug = pair[1]
 
     SCHEDULED_CHECKS[user_id] = slug
-
+    myCollection.insert_one({"user_id":user_id,"user_name":user_name,"selection":rest_name,"slug":slug,"status":True})
     print(f"Scheduled notification for user '{user_name} for restaurant {rest_name} ({slug})", flush=True)
 
     return f'Awesome! I will notify you as soon as {rest_name} is available for orders! :smile:'
 
 
 if __name__ == '__main__':
-    check()
     app.run(debug=True, host='0.0.0.0', port=80)
