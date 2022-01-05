@@ -4,3 +4,5 @@ runtime_config:
     python_version: 3
 manual_scaling:
     instances: 1
+env_variables:
+  SLACK_TOKEN: "xoxb-842063672404-2923114979617-QJt0Ta57JlPmTxjuLP1iESW8"

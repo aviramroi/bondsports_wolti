@@ -7,9 +7,10 @@ from flask import Flask
 from flask import request
 from slack import WebClient
 
-CHECK_INTERVAL = 5.0
+CHECK_INTERVAL = 10.0
 
-SLACK_TOKEN = os.getenv('SLACK_TOKEN')
+# SLACK_TOKEN = os.getenv('SLACK_TOKEN')
+SLACK_TOKEN = 'xoxb-842063672404-2923114979617-QJt0Ta57JlPmTxjuLP1iESW8'
 
 if SLACK_TOKEN is None:
     print('SLACK_TOKEN is not defined in environment variables')
@@ -20,7 +21,8 @@ SLACK_CLIENT = WebClient(SLACK_TOKEN)
 URL_SEARCH = 'https://restaurant-api.wolt.com/v1/search?sort=releveancy&lat=32.06694006621747&lon=34.784552827477455&q=%s'
 URL_REST_INFO = 'https://restaurant-api.wolt.com/v3/venues/slug/%s'
 
-SCHEDULED_CHECKS = {}
+# SCHEDULED_CHECKS = {"U01NMJ7JTV4":"benz-brothers-ibn-gabirol"}
+SCHEDULED_CHECKS={}
 
 app = Flask(__name__)
 
@@ -34,6 +36,7 @@ def send_message(user_id, text):
 
 
 def check():
+    print("checking")
     if SCHEDULED_CHECKS:
         print(f'Processing {str(len(SCHEDULED_CHECKS))} jobs...', flush=True)
 
@@ -43,7 +46,7 @@ def check():
             try:
                 response = requests.get(URL_REST_INFO % SCHEDULED_CHECKS[user_id])
 
-                response.raise_for_status()
+                # response.raise_for_status()
 
                 result = response.json()['results'][0]
 
@@ -54,6 +57,7 @@ def check():
                 except:
                     rest_name = list(filter(lambda x: x["lang"] == "en", result["name"]))[
                         0]["value"]
+                    print("errrorrr")
 
                 is_online = result['online']
 
@@ -82,6 +86,8 @@ def check():
 
         print(f'Done ({str(len(users_to_delete))})', flush=True)
 
+    else:
+        print("SCHEDULED_CHECKS:",SCHEDULED_CHECKS)
     t = threading.Timer(CHECK_INTERVAL, check)
     t.daemon = True
     t.start()
@@ -197,11 +203,11 @@ def interactive_callback():
 
     SCHEDULED_CHECKS[user_id] = slug
 
-    print(f"Scheduled notification for user '{user_name} for restaurant {rest_name} ({slug})", flush=True)
+    print(f"Scheduled new notification for user '{user_name} for restaurant {rest_name} ({slug})", flush=True)
 
     return f'Awesome! I will notify you as soon as {rest_name} is available for orders! :smile:'
 
+check()
 
 if __name__ == '__main__':
-    check()
     app.run(debug=True, host='0.0.0.0', port=80)
