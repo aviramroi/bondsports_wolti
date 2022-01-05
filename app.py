@@ -117,6 +117,17 @@ def find_restaurant(query):
 def getter_test():
     return "all good"
 
+@app.route('/testing', methods=['POST'])
+def what():
+    user_id = request.form['user_id']
+    command = request.form['command']
+    text = request.form['text']
+    channel_id = request.form['channel_id']
+    response = requests.get(URL_SEARCH % text)
+
+    response.raise_for_status()
+    return request
+
 @app.route('/', methods=['POST'])
 def regular_callback():
     user_id = request.form['user_id']
@@ -140,7 +151,7 @@ def regular_callback():
             return "Oops, something went wrong! :cry: Please try again."
 
         if not results:
-            return "I didn't find any results matching this restaurant name :cry:. Try to be more specific!"
+            return "I didn't find any results matching this restaurant name :cry:. Try to be more specific! '" + text + "'"
 
         attachments = [
             {
