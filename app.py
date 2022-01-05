@@ -17,7 +17,7 @@ if SLACK_TOKEN is None:
 
 SLACK_CLIENT = WebClient(SLACK_TOKEN)
 
-URL_SEARCH = 'https://restaurant-api.wolt.com/v1/search?sort=releveancy&q=%s'
+URL_SEARCH = 'https://restaurant-api.wolt.com/v1/search?sort=releveancy&lat=32.06694006621747&lon=34.784552827477455&q=%s'
 URL_REST_INFO = 'https://restaurant-api.wolt.com/v3/venues/slug/%s'
 
 SCHEDULED_CHECKS = {}
