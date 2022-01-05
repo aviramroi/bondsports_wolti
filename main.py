@@ -11,8 +11,11 @@ from pymongo import MongoClient
 
 CHECK_INTERVAL = 5.0
 
-MONGO_CON = os.getenv('MONGO_CON')
-SLACK_TOKEN = os.getenv('SLACK_TOKEN')
+# MONGO_CON = os.getenv('MONGO_CON')
+# SLACK_TOKEN = os.getenv('SLACK_TOKEN')
+
+MONGO_CON = 'mongodb://root:A260196r.@cluster0.d416l.mongodb.net/wolti?retryWrites=true&w=majority'
+SLACK_TOKEN = 'xoxb-842063672404-2923114979617-QJt0Ta57JlPmTxjuLP1iESW8'
 
 if SLACK_TOKEN is None:
     print('SLACK_TOKEN is not defined in environment variables')
