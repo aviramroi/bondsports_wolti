@@ -112,6 +112,11 @@ def find_restaurant(query):
     return ret
 
 
+
+@app.route('/test',methods=['GET'])
+def getter_test():
+    return "all good"
+
 @app.route('/', methods=['POST'])
 def regular_callback():
     user_id = request.form['user_id']
